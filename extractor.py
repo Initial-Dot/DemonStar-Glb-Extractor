@@ -44,6 +44,9 @@ def readBmp(f:BufferedReader, width:int, height:int):
     print('读取bmp文件')
     
     
+if not os.path.exists('extracts'):
+    os.mkdir('extracts')    
+    
 while 1:
     prompt = input()
     if not prompt:
@@ -51,7 +54,7 @@ while 1:
     if not os.path.exists(prompt):
         print('file no found.')
         continue
-    dirs = prompt + '_extract'
+    dirs = f'extracts/{prompt}_files'
     with open(prompt, 'rb') as f:
         if not os.path.exists(dirs):
             os.mkdir(dirs)
