@@ -1,4 +1,4 @@
-# extract game assets from demonstar
+# Extract game assets from demonstar *.glb files
 ### auto convert binary data to supported extensions such as:
 - *.png
 - *.bmp
