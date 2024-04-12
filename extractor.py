@@ -1,7 +1,10 @@
 import os
+import io
 import re
 from PIL import Image
+from mds2midi import read_mds, write_mds_as_midi
 from io import BufferedReader
+
 
 class sub_file_info:
     def __init__(self, idx:int, offset:int, len:int, name:str):
@@ -96,13 +99,17 @@ while 1:
     if not os.path.exists(prompt):
         print('file no found.')
         continue
-    dirs = f'extracts/{prompt}_files'
+    dirs = f'extracts/{os.path.basename(prompt)}_files'
     with open(prompt, 'rb') as f:
         if not os.path.exists(dirs):
             os.mkdir(dirs)
+        if not os.path.exists(dirs + '/image'):
             os.mkdir(dirs + '/image')
+        if not os.path.exists(dirs + '/wav'):
             os.mkdir(dirs + '/wav')
+        if not os.path.exists(dirs + '/midi'):
             os.mkdir(dirs + '/midi')
+        if not os.path.exists(dirs + '/bin'):
             os.mkdir(dirs + '/bin')
         header = f.read(8).decode()
         subfile_count = readInt(f)
@@ -112,7 +119,7 @@ while 1:
         for i in range(subfile_count):
             file_offset = readInt(f)
             file_len = readInt(f)
-            file_name = f.read(20).decode()
+            file_name = f.read(20).decode(errors='ignore')
             f_infos.append(sub_file_info(i, file_offset, file_len, re.sub(r'[\x01\\/*?:"<>|\0]', "", file_name)))
         for info in f_infos:
             f.seek(info.offset)
@@ -128,22 +135,34 @@ while 1:
                 f.seek(info.offset)
                 try:
                     sub_header = f.read(4).decode()
-                    print(sub_header)
                     if sub_header == 'RIFF':
-                        path = f'{dirs}/wav/{f_name}.wav'
+                        f.seek(4, 1)
+                        sub_header = f.read(4).decode()
+                        print(sub_header)
+                        if sub_header == 'WAVE':
+                            path = f'{dirs}/wav/{f_name}.wav'
+                        elif sub_header == 'MIDS':
+                            f.seek(info.offset)
+                            with io.BytesIO(f.read(info.len)) as mds_io:
+                                mds_data = read_mds(mds_io)
+                                path = f'{dirs}/midi/{f_name}.mid'
+                                with open(path, 'wb') as mds_f:
+                                    write_mds_as_midi(mds_data, mds_f)
+                                    continue
+                        else:
+                            path = f'{dirs}/bin/{f_name}.bin'
                     elif sub_header == 'MThd':
                         path = f'{dirs}/midi/{f_name}.mid'
                     else:
                         path = f'{dirs}/bin/{f_name}.bin'
-                except UnicodeDecodeError:
+                except:
+                    sub_header = 'unknown'
                     path = f'{dirs}/bin/{f_name}.bin'
-                
+                print(sub_header)
                 f.seek(info.offset)
                 with open(path, 'wb') as ex_f:
                     ex_f.write(f.read(info.len))
                     
-            # fb = f.read(info.len)
-            # with open(f'{dirs}/{info.name}.bin', 'wb') as extract_f:
-            #     extract_f.write(fb)
+
             
             
